@@ -1,7 +1,26 @@
-# Environment files
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Environment variables
 .env
-.env.local
-.env.*.local
+.env.*
+backend/.env
+.env.example
+!.env.example
+backend/.env.example
+backend/.env
+
 
 # Node
 node_modules/
@@ -9,28 +28,16 @@ node_modules/
 out/
 dist/
 
-# Python
-__pycache__/
-*.py[cod]
-.venv/
-venv/
-env/
-.pytest_cache/
-.mypy_cache/
-
-# IDE
-.vscode/*
-!.vscode/extensions.json
-!.vscode/settings.json
-.idea/
-
-# Operating system
-.DS_Store
-Thumbs.db
+# Build files
+build/
 
 # Logs
 *.log
 
-# Temporary files
-tmp/
-temp/
+# Operating system files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/

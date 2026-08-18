@@ -19,8 +19,9 @@ export default function RepositoryForm() {
   const [repositoryUrl, setRepositoryUrl] = useState("");
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError("");
     setMessage("");
@@ -31,13 +32,44 @@ export default function RepositoryForm() {
     }
 
     if (!isValidGitHubUrl(repositoryUrl)) {
-      setError("Enter a valid public GitHub URL, such as https://github.com/owner/repository.");
+      setError(
+        "Enter a valid public GitHub URL, such as https://github.com/owner/repository."
+      );
       return;
     }
 
-    setMessage(
-      "Repository URL accepted. Backend indexing will be connected in the next phase."
-    );
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+
+    if (!apiUrl) {
+      setError("Backend API URL is not configured.");
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+
+      const response = await fetch(`${apiUrl}/api/health`);
+
+      if (!response.ok) {
+        throw new Error("Backend health check failed.");
+      }
+
+      const data: { status?: string } = await response.json();
+
+      if (data.status !== "ok") {
+        throw new Error("Backend returned an unexpected response.");
+      }
+
+      setMessage(
+        "Frontend successfully connected to the CodeLens AI backend. Repository indexing will be added in the next phase."
+      );
+    } catch {
+      setError(
+        "Could not connect to the backend. Make sure FastAPI is running and CORS is configured."
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   return (
@@ -66,9 +98,10 @@ export default function RepositoryForm() {
 
           <button
             type="submit"
-            className="min-h-12 rounded-xl bg-cyan-400 px-6 text-sm font-bold text-slate-950 transition hover:bg-cyan-300 focus:outline-none focus:ring-2 focus:ring-cyan-300 focus:ring-offset-2 focus:ring-offset-slate-900"
+            disabled={isSubmitting}
+            className="min-h-12 rounded-xl bg-cyan-400 px-6 text-sm font-bold text-slate-950 transition hover:bg-cyan-300 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            Analyze repository
+            {isSubmitting ? "Connecting..." : "Analyze repository"}
           </button>
         </div>
 
@@ -89,8 +122,7 @@ export default function RepositoryForm() {
       </form>
 
       <p className="mt-3 text-center text-xs text-slate-500">
-        Start with a public GitHub repository. Indexing will be connected to
-        the backend in Phase 3.
+        Enter a public GitHub repository URL to begin.
       </p>
     </div>
   );
