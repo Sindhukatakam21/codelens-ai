@@ -2,6 +2,19 @@
 
 import { FormEvent, useState } from "react";
 
+type RepositoryMetadata = {
+  owner: string;
+  name: string;
+  full_name: string;
+  description: string | null;
+  default_branch: string;
+  language: string | null;
+  stars: number;
+  forks: number;
+  is_private: boolean;
+  html_url: string;
+};
+
 function isValidGitHubUrl(value: string) {
   try {
     const url = new URL(value.trim());
@@ -18,22 +31,27 @@ function isValidGitHubUrl(value: string) {
 export default function RepositoryForm() {
   const [repositoryUrl, setRepositoryUrl] = useState("");
   const [error, setError] = useState("");
-  const [message, setMessage] = useState("");
+  const [repository, setRepository] = useState<RepositoryMetadata | null>(
+    null
+  );
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setError("");
-    setMessage("");
 
-    if (!repositoryUrl.trim()) {
+    setError("");
+    setRepository(null);
+
+    const trimmedUrl = repositoryUrl.trim();
+
+    if (!trimmedUrl) {
       setError("Please enter a GitHub repository URL.");
       return;
     }
 
-    if (!isValidGitHubUrl(repositoryUrl)) {
+    if (!isValidGitHubUrl(trimmedUrl)) {
       setError(
-        "Enter a valid public GitHub URL, such as https://github.com/owner/repository."
+        "Enter a valid GitHub repository URL, such as https://github.com/owner/repository."
       );
       return;
     }
@@ -48,25 +66,36 @@ export default function RepositoryForm() {
     try {
       setIsSubmitting(true);
 
-      const response = await fetch(`${apiUrl}/api/health`);
+      const response = await fetch(
+        `${apiUrl}/api/repositories/validate`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            repository_url: trimmedUrl,
+          }),
+        }
+      );
+
+      const data = await response.json();
 
       if (!response.ok) {
-        throw new Error("Backend health check failed.");
+        throw new Error(
+          data.detail ||
+            "Could not validate the repository. Please try again."
+        );
       }
 
-      const data: { status?: string } = await response.json();
+      setRepository(data as RepositoryMetadata);
+    } catch (requestError) {
+      const message =
+        requestError instanceof Error
+          ? requestError.message
+          : "Could not connect to the backend. Please try again.";
 
-      if (data.status !== "ok") {
-        throw new Error("Backend returned an unexpected response.");
-      }
-
-      setMessage(
-        "Frontend successfully connected to the CodeLens AI backend. Repository indexing will be added in the next phase."
-      );
-    } catch {
-      setError(
-        "Could not connect to the backend. Make sure FastAPI is running and CORS is configured."
-      );
+      setError(message);
     } finally {
       setIsSubmitting(false);
     }
@@ -90,7 +119,7 @@ export default function RepositoryForm() {
             onChange={(event) => {
               setRepositoryUrl(event.target.value);
               setError("");
-              setMessage("");
+              setRepository(null);
             }}
             placeholder="https://github.com/owner/repository"
             className="min-h-12 flex-1 rounded-xl border border-slate-700 bg-slate-950 px-4 text-sm text-white outline-none placeholder:text-slate-500 focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20"
@@ -101,7 +130,7 @@ export default function RepositoryForm() {
             disabled={isSubmitting}
             className="min-h-12 rounded-xl bg-cyan-400 px-6 text-sm font-bold text-slate-950 transition hover:bg-cyan-300 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {isSubmitting ? "Connecting..." : "Analyze repository"}
+            {isSubmitting ? "Validating..." : "Analyze repository"}
           </button>
         </div>
 
@@ -110,19 +139,73 @@ export default function RepositoryForm() {
             {error}
           </p>
         )}
-
-        {message && (
-          <p
-            className="px-2 pt-3 text-left text-sm text-emerald-300"
-            role="status"
-          >
-            {message}
-          </p>
-        )}
       </form>
 
+      {repository && (
+        <section
+          className="mt-5 rounded-2xl border border-emerald-400/30 bg-emerald-400/10 p-5 text-left"
+          aria-live="polite"
+        >
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <p className="text-sm font-semibold text-emerald-300">
+                Repository validated successfully
+              </p>
+
+              <h2 className="mt-1 text-xl font-bold text-white">
+                {repository.full_name}
+              </h2>
+
+              <p className="mt-2 max-w-xl text-sm leading-6 text-slate-300">
+                {repository.description || "No repository description provided."}
+              </p>
+            </div>
+
+            <a
+              href={repository.html_url}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex shrink-0 items-center justify-center rounded-lg border border-emerald-300/50 px-4 py-2 text-sm font-semibold text-emerald-200 transition hover:bg-emerald-300/10"
+            >
+              Open on GitHub
+            </a>
+          </div>
+
+          <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <div className="rounded-xl bg-slate-950/60 p-3">
+              <p className="text-xs text-slate-500">Language</p>
+              <p className="mt-1 text-sm font-semibold text-white">
+                {repository.language || "Not specified"}
+              </p>
+            </div>
+
+            <div className="rounded-xl bg-slate-950/60 p-3">
+              <p className="text-xs text-slate-500">Default branch</p>
+              <p className="mt-1 break-words text-sm font-semibold text-white">
+                {repository.default_branch}
+              </p>
+            </div>
+
+            <div className="rounded-xl bg-slate-950/60 p-3">
+              <p className="text-xs text-slate-500">Stars</p>
+              <p className="mt-1 text-sm font-semibold text-white">
+                {repository.stars.toLocaleString()}
+              </p>
+            </div>
+
+            <div className="rounded-xl bg-slate-950/60 p-3">
+              <p className="text-xs text-slate-500">Forks</p>
+              <p className="mt-1 text-sm font-semibold text-white">
+                {repository.forks.toLocaleString()}
+              </p>
+            </div>
+          </div>
+        </section>
+      )}
+
       <p className="mt-3 text-center text-xs text-slate-500">
-        Enter a public GitHub repository URL to begin.
+        Enter a public GitHub repository URL to validate and inspect its basic
+        details.
       </p>
     </div>
   );
