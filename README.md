@@ -85,3 +85,52 @@ http://127.0.0.1:8000/docs
 - Connected the backend to Supabase.
 - Deployed the backend on Render.
 - Connected the Vercel frontend to the Render backend successfully.
+## Phase 4 — GitHub Repository Validation
+
+CodeLens AI can validate a public GitHub repository URL and retrieve live repository metadata through the GitHub REST API.
+
+### Current workflow
+
+1. Enter a public GitHub repository URL.
+2. The Next.js frontend sends the URL to the FastAPI backend.
+3. The backend validates the URL and securely calls the GitHub REST API.
+4. The application displays repository information, including:
+   - Owner and repository name
+   - Description
+   - Primary language
+   - Default branch
+   - Stars and forks
+   - Direct GitHub repository link
+
+### API Endpoint
+
+```text
+POST /api/repositories/validate
+```
+
+### Example Request
+
+```json
+{
+  "repository_url": "[https://github.com/vercel/next.js](https://github.com/vercel/next.js)"
+}
+```
+
+### Example Response
+
+```json
+{
+  "owner": "vercel",
+  "name": "next.js",
+  "full_name": "vercel/next.js",
+  "description": "The React Framework",
+  "default_branch": "canary",
+  "language": "JavaScript",
+  "stars": 143132,
+  "forks": 34582,
+  "is_private": false,
+  "html_url": "[https://github.com/vercel/next.js](https://github.com/vercel/next.js)"
+}
+```
+
+> Repository statistics are live values and can change over time.
